@@ -1,9 +1,9 @@
+import multiprocessing as mp
+from dataclasses import dataclass
+
 import numpy as np
 from scipy.stats import poisson
-from dataclasses import dataclass
-from typing import Tuple, Dict, List
-from concurrent.futures import ThreadPoolExecutor
-import multiprocessing as mp
+
 
 @dataclass
 class TeamStats:
@@ -15,6 +15,7 @@ class TeamStats:
     missing_offensive_key_players: int
     group_pressure: bool
     friendly_match: bool = False
+
 
 class PredictionModel:
     SLAUGHTER_THRESHOLD_ELO = 400
@@ -35,7 +36,7 @@ class PredictionModel:
         strong = home if home.elo_rating > away.elo_rating else away
         if strong.friendly_match or not strong.group_pressure:
             return False, -1
-        return True, 0 if home.elo_rating > away.elo_rating else 
+        return True, 0 if home.elo_rating > away.elo_rating else 1
 
     def adjust_expectations(self, home, away):
         home_exp = home.avg_xg
@@ -44,7 +45,9 @@ class PredictionModel:
         if slaughter:
             home_exp *= 2.0
             away_exp += 0.6
-        total_missing = home.missing_defensive_key_players + away.missing_defensive_key_players
+        total_missing = (
+            home.missing_defensive_key_players + away.missing_defensive_key_players
+        )
         if total_missing >= 2:
             home_exp += 0.4
             away_exp += 0.4
@@ -53,7 +56,16 @@ class PredictionModel:
     def predict(self, home, away):
         lambda_h, lambda_a = self.adjust_expectations(home, away)
         return {
-            "expected_goals": {"home": lambda_h, "away": lambda_a, "total": lambda_h + lambda_a},
-            "top_scores": [{"score": "2-1", "probability": 12.5}, {"score": "1-1", "probability": 10.2}],
-            "flags": {"slaughter_mode": self.is_slaughter_mode_triggered(home, away)[0]}
+            "expected_goals": {
+                "home": lambda_h,
+                "away": lambda_a,
+                "total": lambda_h + lambda_a,
+            },
+            "top_scores": [
+                {"score": "2-1", "probability": 12.5},
+                {"score": "1-1", "probability": 10.2},
+            ],
+            "flags": {
+                "slaughter_mode": self.is_slaughter_mode_triggered(home, away)[0]
+            },
         }
